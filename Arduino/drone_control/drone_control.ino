@@ -16,18 +16,11 @@ typedef unsigned long ulong;
 #define BACK_RIGHT 3
 #define TEST_CONTROLS
 
-#define CONTROL_TRIGGER A0; //Pins tied to control module
-#define CONTROL_THROTTLE A1; //Set to 1-4 with 0 as control for now
-#define CONTROL_PITCH A2; //This will be changed when we know what pins will be used
-#define CONTROL_YAW A3;
-#define CONTROL_ROLL A4;
-
 Servo rotor[4];
 ulong TimeSinceStart;
 ulong TimeDelta;
 bool ManualControl;
 
-Serial.begin(9600);
 
 void SetMotor(int MotorID, int value)
 {
@@ -91,6 +84,12 @@ void setup() {
 ControllerInput GetControllerInput()
 {
   ControllerInput Result;
+
+  const short CONTROL_THROTTLE = 1;
+  const short CONTROL_PITCH = 2;
+  const short CONTROL_YAW = 3;
+  const short CONTROL_ROLL = 4;
+  
   Result.Throttle = analogRead(CONTROL_THROTTLE);
   Result.Pitch = analogRead(CONTROL_PITCH);
   Result.Yaw = analogRead(CONTROL_YAW);
