@@ -16,5 +16,6 @@ install:
     - pip install -U platformio
 
 script:
+    - chmod +x prep.sh
     - ./prep.sh
     - platformio ci --board=megaatmega2560
