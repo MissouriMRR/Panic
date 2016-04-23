@@ -21,6 +21,7 @@ ulong TimeSinceStart;
 ulong TimeDelta;
 bool ManualControl;
 
+
 void SetMotor(int MotorID, int value)
 {
   rotor[MotorID].writeMicroseconds(value);
@@ -82,8 +83,17 @@ void setup() {
 
 ControllerInput GetControllerInput()
 {
-  // TODO: This function
   ControllerInput Result;
+
+  const short CONTROL_THROTTLE = 1;
+  const short CONTROL_PITCH = 2;
+  const short CONTROL_YAW = 3;
+  const short CONTROL_ROLL = 4;
+  
+  Result.Throttle = analogRead(CONTROL_THROTTLE);
+  Result.Pitch = analogRead(CONTROL_PITCH);
+  Result.Yaw = analogRead(CONTROL_YAW);
+  Result.Roll = analogRead(CONTROL_ROLL);
 
   return Result;
 }
