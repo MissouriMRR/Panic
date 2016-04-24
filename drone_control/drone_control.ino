@@ -1,7 +1,7 @@
 /*
  * 
  */
-
+#include <Adafruit_L3GD20.h>
 #include <Servo.h>
 #include "drone_common.h"
 
@@ -21,6 +21,7 @@ ulong TimeSinceStart;
 ulong TimeDelta;
 bool ManualControl;
 
+Adafruit_L3GD20 gyro;
 
 void SetMotor(int MotorID, int value)
 {
@@ -73,6 +74,9 @@ void setup() {
     rotor[i].attach(i); // Set up ESC channels. TODO: Find the offset for i in this case
     SetMotor(i, SERVO_OFF);
   }
+
+  gyro.begin(gyro.L3DS20_RANGE_250DPS);
+
   delay(5000);
   LiftOff(1.5);
 
@@ -100,6 +104,8 @@ ControllerInput GetControllerInput()
 
 
 void loop(){
+  gyro.read();
+
   if (ManualControl)
   {
     const int CONTROLLER_MAX = 5;
