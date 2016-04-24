@@ -102,11 +102,21 @@ ControllerInput GetControllerInput()
 void loop(){
   if (ManualControl)
   {
+    const int CONTROLLER_MAX = 5;
+    const int CONTROLLER_MIN = 0;
+    const int MOTOR_MAX = 1024;
+    const int MOTOR_MIN = 0;
+
     ControllerInput Input = GetControllerInput();
     int Throttle = Input.Throttle;
     int Roll     = Input.Roll;
     int Pitch    = Input.Pitch;
     int Yaw      = Input.Yaw;
+    
+    Throttle = map(Throttle, CONTROLLER_MIN, CONTROLLER_MAX, MOTOR_MIN, MOTOR_MAX);
+    Roll     = map(Roll,     CONTROLLER_MIN, CONTROLLER_MAX, MOTOR_MIN, MOTOR_MAX);
+    Pitch    = map(Pitch,    CONTROLLER_MIN, CONTROLLER_MAX, MOTOR_MIN, MOTOR_MAX);
+    Yaw      = map(Yaw,      CONTROLLER_MIN, CONTROLLER_MAX, MOTOR_MIN, MOTOR_MAX);
 
     SetMotor(FRONT_LEFT,  +Yaw + Roll - Pitch + Throttle);
     SetMotor(FRONT_RIGHT, -Yaw - Roll - Pitch + Throttle);
