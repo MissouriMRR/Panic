@@ -3,6 +3,7 @@
  */
 #include <Adafruit_L3GD20.h>
 #include <Servo.h>
+#include <PID_v1.h>
 #include "drone_common.h"
 
 typedef unsigned long ulong;
@@ -23,6 +24,17 @@ Servo rotor[4];
 ulong TimeSinceStart;
 ulong TimeDelta;
 bool ManualControl;
+
+double SetYaw, IputYaw, OputYaw;
+double SetRoll, IputRoll, OputRoll;
+double SetPitch, IputPitch, OputPitch;
+double SetThro, IputThro, OputThro;
+
+PID YawPid(&IputYaw, &OputYaw, &SetYaw,5,10,10,DIRECT);
+PID RollPid(&IputRoll, &OputRoll, &SetRoll,5,10,10,DIRECT);
+PID PitchPid(&IputPitch, &OputPitch, &SetPitch,5,10,10,DIRECT);
+PID ThroPid(&IputThro, &OputThro, &SetThro,5,10,10,DIRECT);
+
 
 Adafruit_L3GD20 gyro;
 
@@ -68,6 +80,14 @@ void Land()
 
 void setup() {
   Serial.begin(9600);
+
+  /*set up PID */
+  YawPid.SetOutputLimits(0,360);// return in degree
+  PitchPid.SetOutputLimits(0,360);
+  RollPid.SetOutputLimits(0,360);
+  ThroPid.SetOutputLimits(1000,2000);//limit max thro output to 
+  /*end set up PID*/
+  
 #ifdef TEST_CONTROLS
   ManualControl = true;
 #else
@@ -115,10 +135,20 @@ void loop(){
     const int CONTROLLER_MIN = 0;
 
     ControllerInput Input = GetControllerInput();
-    int Throttle = Input.Throttle;
-    int Roll     = Input.Roll;
-    int Pitch    = Input.Pitch;
-    int Yaw      = Input.Yaw;
+    IputThro = Input.Throttle;
+    IputRoll = Input.Roll;
+    IputPitch    = Input.Pitch;
+    IputYaw      = Input.Yaw;
+
+    YawPid.Compute();
+    PitchPid.Compute();
+    RollPid.Compute();
+    ThroPid.Compute();
+
+    int Yaw=OputYaw;
+    int Roll=OputRoll;
+    int Pitch=OputPitch;
+    int Throttle=OputThro;
     
     Throttle = map(Throttle, CONTROLLER_MIN, CONTROLLER_MAX, SERVO_OFF, SERVO_FULL);
     Roll     = map(Roll,     CONTROLLER_MIN, CONTROLLER_MAX, SERVO_OFF, SERVO_FULL);
