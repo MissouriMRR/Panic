@@ -22,4 +22,4 @@ install:
 script:
     - chmod +x prep.sh
     - ./prep.sh
-    - platformio ci --lib="/tmp/Adafruit_L3GD20-1.0.0" --lib="/tmp/br3ttb-Arduino-PID-Library-v1.1.1-2-gfb095d8" --board=megaatmega2560
+    - platformio ci --lib="/tmp/Adafruit_L3GD20-1.0.0" --lib="/tmp/br3ttb-Arduino-PID-Library-fb095d8" --board=megaatmega2560
