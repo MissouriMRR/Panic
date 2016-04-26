@@ -14,10 +14,12 @@ env:
     
 install:
     - pip install -U platformio
+    - wget https://github.com/br3ttb/Arduino-PID-Library/zipball/master -O /tmp/pid_source.zip
     - wget https://github.com/adafruit/Adafruit_L3GD20/archive/1.0.0.zip -O /tmp/gyro_source.zip
     - unzip /tmp/gyro_source.zip -d /tmp/
+    - unzip /tmp/pid_source.zip -d /tmp/
 
 script:
     - chmod +x prep.sh
     - ./prep.sh
-    - platformio ci --lib="/tmp/Adafruit_L3GD20-1.0.0" --board=megaatmega2560
+    - platformio ci --lib="/tmp/Adafruit_L3GD20-1.0.0" --lib="/tmp/br3ttb-Arduino-PID-Library-v1.1.1-2-gfb095d8" --board=megaatmega2560
