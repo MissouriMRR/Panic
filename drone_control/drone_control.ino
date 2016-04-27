@@ -53,6 +53,35 @@ double MicrosToSecond(ulong micro){
   return micro / 1000000.f;
 }
 
+void FlyForTime(int motorValue, int timePeriod)
+{
+  static int flightStartTime = millis();
+  static bool isFlying = false;
+  
+  if(TimeDelta - flightStartTime < timePeriod && !isFlying)
+  {
+    SetMotor(FRONT_LEFT, SERVO_HOVER);
+    SetMotor(FRONT_RIGHT, SERVO_HOVER);
+
+    SetMotor(BACK_LEFT, SERVO_HOVER + 250);
+    SetMotor(BACK_RIGHT, SERVO_HOVER + 250);
+      
+    isFlying = true;
+  }
+  else if(TimeDelta - flightStartTime >= timePeriod && isFlying)
+  {
+    SetMotor(BACK_LEFT, SERVO_HOVER);
+    SetMotor(BACK_RIGHT, SERVO_HOVER);
+    flightStartTime = 0;
+    isFlying = false;
+  }  
+}
+
+void FlyForDistance(int motorValue, float distance)
+{
+  
+}
+
 void LiftOff(float feet){
   double Height = 0; 
   // Read the height from the ultrasonic sensors 
