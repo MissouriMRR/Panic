@@ -1,6 +1,8 @@
 /*
  * 
  */
+
+#include <NewPing.h>
 #include <Adafruit_L3GD20.h>
 #include <Servo.h>
 #include <PID_v1.h>
@@ -9,34 +11,51 @@
 typedef unsigned long ulong;
 
 #define SERVO_OFF  1000
-#define SERVO_HOVER 1000 // TODO: Find the actual value
-#define SERVO_FULL 3000 // TODO: Find the actual value
+#define SERVO_HOVER 1200 // TODO: Find the actual value
+#define SERVO_FULL 2100 // TODO: Find the actual value
 
+#define ECHO_PIN 10
+#define TRIGGER_PIN 11
+#define MAX_HEIGHT 100
 
-#define FRONT_LEFT  2
-#define FRONT_RIGHT 3
-#define BACK_LEFT   4
-#define BACK_RIGHT  5
+#define MOTOR_PIN_OFFSET 2
+#define FRONT_LEFT  0
+#define FRONT_RIGHT 1
+#define BACK_LEFT   2
+#define BACK_RIGHT  3
 
 #define TEST_CONTROLS
+
+struct Angles
+{
+  double roll;
+  double pitch;
+  double yaw;
+};
+
+Angles CurrentAngle;
 
 Servo rotor[4];
 ulong TimeSinceStart;
 ulong TimeDelta;
-bool ManualControl;
+bool ManualControl = true;
 
-double SetYaw, IputYaw, OputYaw;
-double SetRoll, IputRoll, OputRoll;
-double SetPitch, IputPitch, OputPitch;
-double SetThro, IputThro, OputThro;
+NewPing sonar(ECHO_PIN, TRIGGER_PIN, MAX_HEIGHT);
 
-PID YawPid(&IputYaw, &OputYaw, &SetYaw,5,10,10,DIRECT);
-PID RollPid(&IputRoll, &OputRoll, &SetRoll,5,10,10,DIRECT);
-PID PitchPid(&IputPitch, &OputPitch, &SetPitch,5,10,10,DIRECT);
-PID ThroPid(&IputThro, &OputThro, &SetThro,5,10,10,DIRECT);
+double SetYaw,   InputYaw,   OutputYaw;
+double SetRoll,  InputRoll,  OutputRoll;
+double SetPitch, InputPitch, OutputPitch;
 
+PID YawPid  (&InputYaw,   &OutputYaw,   &SetYaw,   5, 10, 10, DIRECT);
+PID RollPid (&InputRoll,  &OutputRoll,  &SetRoll,  5, 10, 10, DIRECT);
+PID PitchPid(&InputPitch, &OutputPitch, &SetPitch, 5, 10, 10, DIRECT);
 
 Adafruit_L3GD20 gyro;
+
+float GetHeight()
+{
+  return sonar.ping_in();
+}
 
 void SetMotor(int MotorID, int value)
 {
@@ -108,13 +127,13 @@ void Land()
 }
 
 void setup() {
-  Serial.begin(9600);
+  CurrentAngle = {};
+  Serial.begin(115200);
 
   /*set up PID */
-  YawPid.SetOutputLimits(0,360);// return in degree
-  PitchPid.SetOutputLimits(0,360);
-  RollPid.SetOutputLimits(0,360);
-  ThroPid.SetOutputLimits(1000,2000);//limit max thro output to 
+  YawPid.SetOutputLimits(SERVO_OFF, SERVO_FULL); 
+  PitchPid.SetOutputLimits(SERVO_OFF, SERVO_FULL);
+  RollPid.SetOutputLimits(SERVO_OFF, SERVO_FULL);
   /*end set up PID*/
   
 #ifdef TEST_CONTROLS
@@ -127,11 +146,15 @@ void setup() {
   TimeDelta = 0;
   
   for (int i = FRONT_LEFT; i <= BACK_RIGHT; ++i){
-    rotor[i].attach(i); // Set up ESC channels. TODO: Find the offset for i in this case
+    rotor[i].attach(i + MOTOR_PIN_OFFSET); // Set up ESC channels. TODO: Find the offset for i in this case
     SetMotor(i, SERVO_OFF);
   }
 
-  gyro.begin(gyro.L3DS20_RANGE_250DPS);
+  if(!gyro.begin(gyro.L3DS20_RANGE_250DPS))
+  {
+    Serial.println("Failed to initialize Gyro unit");
+    while(true); // Loop forever after failure.
+  }
 
   delay(5000); // Delay for the battery
 }
@@ -146,17 +169,24 @@ ControllerInput GetControllerInput()
   const short CONTROL_YAW      = 8;
   const short CONTROL_ROLL     = 9;
   
-  Result.Throttle = analogRead(CONTROL_THROTTLE);
-  Result.Pitch = analogRead(CONTROL_PITCH);
-  Result.Yaw = analogRead(CONTROL_YAW);
-  Result.Roll = analogRead(CONTROL_ROLL);
+  Result.Throttle = pulseIn(CONTROL_THROTTLE, HIGH, 25000);
+  Result.Pitch    = pulseIn(CONTROL_PITCH, HIGH, 25000);
+  Result.Yaw      = pulseIn(CONTROL_YAW, HIGH, 25000);
+  Result.Roll     = pulseIn(CONTROL_ROLL, HIGH, 25000);
 
   return Result;
 }
 
 
 void loop(){
+  TimeDelta = micros() - TimeSinceStart; 
+  TimeSinceStart = micros(); 
+
   gyro.read();
+
+  CurrentAngle.roll  += gyro.data.y * MicrosToSecond(TimeDelta);
+  CurrentAngle.pitch += gyro.data.x * MicrosToSecond(TimeDelta); // This method has a LOT of error.
+  CurrentAngle.yaw   += gyro.data.z * MicrosToSecond(TimeDelta); // But it's honestly the best I can do
 
   if (ManualControl)
   {
@@ -164,25 +194,29 @@ void loop(){
     const int CONTROLLER_MIN = 0;
 
     ControllerInput Input = GetControllerInput();
-    IputThro = Input.Throttle;
-    IputRoll = Input.Roll;
-    IputPitch    = Input.Pitch;
-    IputYaw      = Input.Yaw;
+    int Throttle = Input.Throttle;
+    SetRoll      = Input.Roll;
+    SetPitch     = Input.Pitch;
+    SetYaw       = Input.Yaw;
+
+    // Since the angle is in the range (0, 360), we need to clamp the Set* values to that
+    SetPitch = map(SetPitch, CONTROLLER_MIN, CONTROLLER_MAX, 0, 360);
+    SetPitch = map(SetPitch, CONTROLLER_MIN, CONTROLLER_MAX, 0, 360);
+    SetPitch = map(SetPitch, CONTROLLER_MIN, CONTROLLER_MAX, 0, 360);
+
+    InputPitch = CurrentAngle.pitch;
+    InputRoll  = CurrentAngle.roll;
+    InputYaw   = CurrentAngle.yaw;
 
     YawPid.Compute();
     PitchPid.Compute();
     RollPid.Compute();
-    ThroPid.Compute();
 
-    int Yaw=OputYaw;
-    int Roll=OputRoll;
-    int Pitch=OputPitch;
-    int Throttle=OputThro;
+    int Yaw   = OutputYaw;
+    int Roll  = OutputRoll;
+    int Pitch = OutputPitch;
     
     Throttle = map(Throttle, CONTROLLER_MIN, CONTROLLER_MAX, SERVO_OFF, SERVO_FULL);
-    Roll     = map(Roll,     CONTROLLER_MIN, CONTROLLER_MAX, SERVO_OFF, SERVO_FULL);
-    Pitch    = map(Pitch,    CONTROLLER_MIN, CONTROLLER_MAX, SERVO_OFF, SERVO_FULL);
-    Yaw      = map(Yaw,      CONTROLLER_MIN, CONTROLLER_MAX, SERVO_OFF, SERVO_FULL);
 
     SetMotor(FRONT_LEFT,  +Yaw + Roll - Pitch + Throttle);
     SetMotor(FRONT_RIGHT, -Yaw - Roll - Pitch + Throttle);
@@ -195,7 +229,6 @@ void loop(){
     // Actual autonomous code goes here...
   }
 
-  TimeDelta = micros() - TimeSinceStart; 
-  TimeSinceStart = micros(); 
+  delay(10);
 }
 
